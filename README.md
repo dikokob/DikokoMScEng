@@ -125,3 +125,51 @@ Add the following lines before the `</launch>` tag towards the end, updating the
 ![alt text](images/vm5.png "VM Screen Shot")
 
 Note: After installing the virtual machine, now you can install ROS and all its dependencies using the command line. The ROS installation steps can be found on : [ROS Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu).
+
+### Enable SSH
+
+Search for and install the **openssh-server** package from Ubuntu Software Center. Or run command below in console if you’re on Ubuntu Server without GUI:
+
+```sudo apt-get install openssh-server```
+
+Once installed, the SSH service should be started automatically. If necessary, you can start (or stop, restart) the service manually via command:
+
+```sudo service ssh start```
+
+### Network setup ROS
+
+Say we have 3 computers connected to the same network which for the sake of the example is `192.168.42.1` with network mask of `255.255.255.0`. And the hostnames and IP addresses of the 3 computers are:
+
+|hostname|TurtleBot|laptop|comp3|
+|--------|---------|------|-----|
+|IP |192.168.42.1|192.168.42.17|192.168.42.20|
+
+### Configuring the ROS master
+
+There should be 1 master/1 ROS core for handling the system. In this example, lets say that TurtleBot is the master. There is actually nothing much to do other than to just run roscore:
+TurtleBot:`$ roscore`
+
+### Configuring the slaves
+
+In the case of slave machines, these need to know the master's IP address. Additionally, ROS is not that smart, meaning that you have to tell the ROS running on the slave machine it's own IP address. That's probably because a computer usually has multiple network interfaces and ROS is not sure about which one is used to communicate with the master. SO: 
+
+1) Specify ROS master IP address: 11311 is the default port of the master. If for some reason it differs from the default value, use the different value accordingly. You can see the port nr. if you run roscore on the master machine.
+    - for comp2:
+ laptop:
+ `$ export ROS_MASTER_URI=http://192.168.42.1:11311`
+
+    - for comp3:
+ comp3:`$ export ROS_MASTER_URI=http://192.168.42.1:11311`
+
+2) Specify slave machine's own IP:
+
+    - for laptop:
+  laptop:`$ export ROS_IP=192.168.42.17`
+
+    - for comp3:
+ comp3:`$ export ROS_IP=192.168.42.20`
+
+
+## Map Merging in ROS
+
+When running the map merging in ROS place the [multi_robot_map_merging](./multi_robot_map_merging)
