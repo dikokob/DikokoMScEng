@@ -160,7 +160,7 @@ In the case of slave machines, these need to know the master's IP address. Addit
  comp3:`$ export ROS_IP=192.168.42.20`
 
 
-## Map Merging
+## Python Implementation
 
 Python requirements
 
@@ -169,6 +169,10 @@ Python requirements
 - Use [requirements.txt](./requirements.txt) to create environment `$ conda create --name <env> --file requirements.txt`
 
 Note the environment is run on python 3.6
+
+### Ransac Parameter setting    
+
+See [RansacReprojection](./RansacReprojection) folder for [results](./RansacReprojection/ImageMergeOnly) and python [file](./RansacReprojection/ImageMerge.py)
 
 ### Map Merging in ROS
 
