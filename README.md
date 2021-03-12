@@ -3,7 +3,9 @@
 <!-- toc -->
 ## Kuboki Platform Setup
  
-Get the Raspberry PI image from [image]()
+Get the Raspberry PI image from [image](https://drive.google.com/drive/folders/1w1sGBSpiR5CB8JSMo9wTCWxfJ0DsrZZv).
+
+Then using [balenaEtcher](https://www.balena.io/etcher/) to burn the image to an SD card.
 
 ### Setting up the robot
 
