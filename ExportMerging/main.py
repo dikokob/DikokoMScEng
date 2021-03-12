@@ -1,0 +1,350 @@
+from __future__ import print_function
+import cv2
+import pandas as pd
+import numpy as np
+import math
+import time
+import os, sys
+from matplotlib import pyplot as plt
+import itertools
+import yaml
+import glob
+
+def num2words(num):
+	under_20 = ['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen']
+	tens = ['Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety']
+	above_100 = {100: 'Hundred',1000:'Thousand', 1000000:'Million', 1000000000:'Billion'}
+ 
+	if num < 20:
+		 return under_20[num]
+	
+	if num < 100:
+		return tens[(int)(num/10)-2] + ('' if num%10==0 else ' ' + under_20[num%10])
+ 
+	# find the appropriate pivot - 'Million' in 3,603,550, or 'Thousand' in 603,550
+	pivot = max([key for key in above_100.keys() if key <= num])
+ 
+	return num2words((int)(num/pivot)) + ' ' + above_100[pivot] + ('' if num%pivot==0 else ' ' + num2words(num%pivot))
+
+MAX_FEATURES = 500
+GOOD_MATCH_PERCENT = 0.15
+MIN_MATCH_COUNT = 0
+sift = cv2.xfeatures2d.SIFT_create()
+
+sift_detector = {'detector_name':'sift',
+                 'detector': cv2.xfeatures2d.SIFT_create(),
+                 'normType': cv2.NORM_L1 }
+
+surf_detector = {'detector_name':'surf',
+                 'detector': cv2.xfeatures2d.SURF_create(),
+                 'normType': cv2.NORM_L1 }
+
+orb_detector = {'detector_name':'orb',
+                'detector': cv2.ORB_create(),
+                'normType': cv2.NORM_HAMMING2 }
+
+feature_detectors = [sift_detector, surf_detector, orb_detector]
+
+
+def matcher(img1, kp1, des1, img2, kp2, des2, detector):
+    """
+    """
+    total = 0
+
+    # BFMatcher with default params
+    bf = cv2.BFMatcher(detector['normType'], crossCheck=True)
+
+    matches = bf.match(des1, des2)
+
+    # Sort them in the order of their distance.
+    matches = sorted(matches, key=lambda x: x.distance)
+
+    # Need to draw only good matches, so create a mask
+    matchesMask = [0 for i in range(len(matches))]
+
+    for i in range(int(len(matches)*0.1)):
+        matchesMask[i] = 1
+
+    for m in matches:
+        total += m.distance
+
+    average_distance = total/len(matches)
+
+    draw_params = dict(matchColor=(0, 255, 0),
+                       singlePointColor=(255, 0, 0),
+                       matchesMask=matchesMask,
+                       flags=cv2.DrawMatchesFlags_DEFAULT)
+
+    # Draw first 10 matches.
+    im_matches = cv2.drawMatches(img1, kp1, img2, kp2, matches, None, **draw_params)
+
+    return im_matches, matches, average_distance
+
+
+def transform(good_matches, img1, kp1, img2, kp2, ransacReprojThreshold=9, confidence=0.99):
+    """
+    """
+    #im1_reg_final = None
+    theta_recovered = None
+    im1_reg = None
+    im_inliers = None
+
+    if len(good_matches) > MIN_MATCH_COUNT:
+
+        # Extract location of good matches
+        points1 = np.zeros((len(good_matches), 2), dtype=np.float32)
+        points2 = np.zeros((len(good_matches), 2), dtype=np.float32)
+
+        for i, match in enumerate(good_matches):
+            points1[i, :] = kp1[match.queryIdx].pt
+            points2[i, :] = kp2[match.trainIdx].pt
+
+        # compute match ratio
+        match_ratio = len(good_matches) / min(len(kp1), len(kp2))
+
+        #  compute maximum iterations needed to estimate affine transformation matrix using RANSAC
+        maxIters = int(math.log(1 - confidence) / math.log(1 - math.pow(match_ratio, 2)))
+
+        print(f'maximum iterarations {maxIters}')
+
+        # Find estimateAffinePartial2D
+        H_affine, mask_affine = cv2.estimateAffinePartial2D(points2, points1, method=cv2.RANSAC,
+                                                            ransacReprojThreshold=ransacReprojThreshold,
+                                                            maxIters=maxIters, confidence=confidence)
+
+        matchesMask = mask_affine.ravel().tolist()
+
+        draw_params = dict(matchColor=(0, 255, 0),
+                           singlePointColor=(255, 0, 0),
+                           matchesMask=matchesMask,
+                           flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+        # Draw matches.
+        im_inliers = cv2.drawMatches(img1, kp1, img2, kp2, good_matches, None, **draw_params)
+
+        #cv2.imwrite('Test.jpg',im_inliers) TODO return
+
+        ss = H_affine[0, 1]  # [0,1] negative and [1,0] positive
+        sc = H_affine[0, 0]
+        scale_recovered = math.sqrt(ss * ss + sc * sc)
+        theta_recovered = math.atan2(ss, sc) * 180 / math.pi
+
+        print("MAP: Calculated scale difference: %.2f, "
+              "Calculated rotation difference: %.2f" %
+              (scale_recovered, theta_recovered))
+
+        # Use homograph
+        height, width = img2.shape
+        #M = np.float32([h[0, 0:3],h[1, 0:3]])
+        im1_reg = cv2.warpAffine(img1, H_affine, (width, height), borderValue=(205, 205, 205))
+
+        # Merge
+        #im1_reg_sum = np.add(im1_reg.astype(int), img2.astype(int))
+        #im1_reg_final = (im1_reg_sum) / 2
+
+        print('Image has been transformed')
+
+    else:
+        print
+        "Not enough matches are found - %d/%d" % (len(good_matches), MIN_MATCH_COUNT)
+        matchesMask = None
+
+    return theta_recovered, im1_reg, scale_recovered, im_inliers
+
+
+def main(images, num):
+    '''
+    Main function processes the images. This function is designed to get any combination of images.
+    :param images: All images in the folder
+    :param num: combinations of maps ie 2 merge two maps
+    '''
+
+
+    for image in images:
+
+        # Get possible combinations
+        combinations = itertools.combinations(list(range(len(image['images']))), num)
+        element_list = [list(element) for element in combinations]
+        combinations = {'num': num2words(num), 'combinations':  element_list}
+        image['combinations'] = combinations
+
+    # Process images
+    for image in images:
+        full_start = time.time()
+
+        detector = feature_detectors[0]
+        bench_marking_main_list = []
+
+        for combination in image['combinations']['combinations']:
+            
+            try:
+
+                try:
+                    path = os.getcwd() + "\outputs_overlap\{0}Comb{1}FinalImageMerger\{2}".format(image['combinations']['num'], image['name'], combination)
+                    os.makedirs(path)
+
+                except:
+                    pass
+
+                img_filename_list = []
+                img_list = []
+                for img_index in combination:
+                    img_filename_list.append(image['images'][img_index])
+                    img_list.append(cv2.imread(image['images'][img_index], 0))
+
+                kp_list = []
+                des_list = []
+
+                for img in img_list:
+                    kp, des = detector['detector'].detectAndCompute(img, None)
+                    kp_list.append(kp)
+                    des_list.append(des)
+
+                start = time.time()
+                #goodmatches_list = []
+                img_reg_list = []
+
+                bench_marking_dict_list = []
+                for i in range(1, len(img_list)):
+                    bench_marking_dict={}
+
+                    # Matcher
+                    img3, good_matches_found, average = matcher(img_list[i], kp_list[i], des_list[i], img_list[0],
+                                                                kp_list[0], des_list[0], detector)
+                    #goodmatches_list.append(good_matches_found)
+
+                    thetaRecovered, imReg, scaleRecovered, im_inliers = transform(good_matches_found, img_list[i],
+                                                                                                    kp_list[i], img_list[0],
+                                                                                                    kp_list[0])
+
+                    original = yaml.load(open(img_filename_list[0].replace('pgm', 'yaml')))
+                    transformed = yaml.load(open(img_filename_list[i].replace('pgm', 'yaml')))
+                    success = True
+
+                    # Check sucess of merge
+                    #if abs((transformed['resolution']/original['resolution']) - (scaleRecovered)) >= ((transformed['resolution']/original['resolution'])*0.01):
+                    if (original['resolution'] * 0.01) < abs(original['resolution'] - (transformed['resolution']/scaleRecovered)):
+                        success = False
+                        try:
+                            path = (path).replace('(fail)','')
+                            path = (path).replace('(success)','')
+                            path = path + '(fail)'
+                            os.makedirs(path)
+                        except:
+                            pass
+                    else:   
+
+                        try:
+                            path = (path).replace('(fail)','')
+                            path = (path).replace('(success)','')
+                            path = (path).replace('(fail)','')
+                            path = path + '(success)'
+                            os.makedirs(path)
+                        except:
+                            pass
+
+                        img_reg_list.append(imReg)
+
+                    originalResolution_div_transformedResolution = (transformed['resolution']/original['resolution'])
+                    originalResolution_div_transformedResolution_minus_scaleRecovered = abs((transformed['resolution']/original['resolution']) - (scaleRecovered))
+
+                    # Compute Overlap
+                    final_image = np.where(img_list[0] == 205, imReg, img_list[0])
+                    a = img_list[0]
+                    b = imReg
+
+                    a_ex_b = np.where(a==b,205,a)
+                    b_ex_a = np.where(a==b,205,b)
+
+                    overlap = np.where(np.where(final_image==a_ex_b,205,final_image)==b_ex_a,205,np.where(final_image==a_ex_b,205,final_image))
+
+                    a_count = np.count_nonzero(~np.isnan(np.where(a==205,np.nan,a)))
+                    b_count = np.count_nonzero(~np.isnan(np.where(b==205,np.nan,b)))
+                    count_overlap = np.count_nonzero(~np.isnan(np.where(overlap==205,np.nan,overlap)))
+
+                    percentage_overlap = (count_overlap/(a_count+b_count-count_overlap))*100
+
+                    del a_ex_b
+                    del b_ex_a
+                    del overlap
+                    del a
+                    del b
+                    del final_image
+
+                    #cv2.imwrite('{0}/a_ex_b_{1}.jpg'. format(path, combination[i]), a_ex_b) TODO return
+                    #cv2.imwrite('{0}/b_ex_a_{1}.jpg'. format(path, combination[i]), b_ex_a) TODO return
+                    #cv2.imwrite('{0}/overlap_{1}.jpg'. format(path, combination[i]), overlap) TODO return
+
+                    bench_marking_dict['percentage_overlap'] = percentage_overlap
+                    bench_marking_dict['original_filename'] = img_filename_list[0].split('/')[-1]
+                    bench_marking_dict['original_resolution'] = original['resolution']
+                    bench_marking_dict['transformed_filename'] = img_filename_list[i].split('/')[-1]
+                    bench_marking_dict['transformed_resolution'] = transformed['resolution']
+                    bench_marking_dict['originalResolution_div_transformedResolution'] = originalResolution_div_transformedResolution
+                    bench_marking_dict['originalResolution_div_transformedResolution_minus_scaleRecovered'] = originalResolution_div_transformedResolution_minus_scaleRecovered
+                    bench_marking_dict['thetaRecovered'] = thetaRecovered
+                    bench_marking_dict['scaleRecovered'] = scaleRecovered
+                    bench_marking_dict['numGoodMatches'] = len(good_matches_found)
+                    if min(len(kp_list[0]), len(kp_list[i])) != 0:
+                        bench_marking_dict['match_ratio'] = len(good_matches_found)/min(len(kp_list[0]), len(kp_list[i]))
+                    else:
+                        bench_marking_dict['match_ratio'] = 0
+                    bench_marking_dict['combination'] = combination
+                    bench_marking_dict['success'] = success
+                    bench_marking_dict_list.append(bench_marking_dict) 
+                    bench_marking_main_list.append(bench_marking_dict)       
+
+                        
+                        
+                    cv2.imwrite('{0}/Matches_{1}.jpg'. format(path, combination[i]), im_inliers)
+                    cv2.imwrite('{0}/OriginalImage_{1}.jpg'. format(path, combination[i]), img_list[i])
+                    cv2.imwrite('{0}/TransformedImage_{1}.jpg'. format(path, combination[i]), imReg)
+
+                df_bench_marking = pd.DataFrame(bench_marking_dict_list)
+                df_bench_marking.to_csv('{0}\\bench_marking.csv'. format(path), index=False)
+                del df_bench_marking
+
+                path = (path).replace('(fail)','')
+                path = (path).replace('(success)','')
+
+                final_image_1 = img_list[0]
+                cv2.imwrite('{0}/OriginalImage.jpg'. format(path), img_list[0])
+                del img_list
+                #del goodmatches_list
+                i = 1
+                for img_reg in img_reg_list:
+                    final_image_1 = np.where(final_image_1 == 205, img_reg, final_image_1)
+                    #final_image = np.add(final_image, img_reg)
+                    i = i + 1
+                
+                if final_image_1 is not None:
+                    #cv2.imwrite('{0}/Final.jpg'. format(path), final_image)
+                    cv2.imwrite('{0}/Final.jpg'. format(path), final_image_1)
+
+
+                end = time.time()
+                elapsed_time = end - start
+
+            except:
+                print("Unexpected error:", sys.exc_info()[0])
+
+        df_bench_marking = pd.DataFrame(bench_marking_main_list)
+        final_path = '\\'.join(path.split('\\')[:-1])
+        df_bench_marking.to_csv('{0}\\bench_marking_final.csv'. format(final_path), index=False)
+        full_end = time.time()
+
+        print('Done, total time taken {}s'.format(full_end-full_start))
+
+
+if __name__ == "__main__":
+
+    # Number of maps to merge at a time for example 3 will simulate 3 maps being merged
+    nums = [2]
+
+    images_maze = {'name': 'Maze','images': glob.glob('inputmaps/maze/*.pgm') }
+    images = [images_maze]
+
+    for num in nums:
+        main(images, num)
+    pass
+

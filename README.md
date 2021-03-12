@@ -1,15 +1,3 @@
-
-- [Kuboki Platform Setup](#heading)
-  * [Setting up the robot](#sub-heading)
-    + [Sub-sub-heading](#sub-sub-heading)
-  * [Adding a sensor](#sub-heading)
-- [Heading](#heading-1)
-  * [Sub-heading](#sub-heading-1)
-    + [Sub-sub-heading](#sub-sub-heading-1)
-- [Heading](#heading-2)
-  * [Sub-heading](#sub-heading-2)
-    + [Sub-sub-heading](#sub-sub-heading-2)
-
 # DikokoMScEng
 
 <!-- toc -->
@@ -170,6 +158,44 @@ In the case of slave machines, these need to know the master's IP address. Addit
  comp3:`$ export ROS_IP=192.168.42.20`
 
 
-## Map Merging in ROS
+## Map Merging
 
-When running the map merging in ROS place the [multi_robot_map_merging](./multi_robot_map_merging)
+Python requirements
+
+- Install Anaconda
+
+- Use [requirements.txt](./requirements.txt) to create environment `$ conda create --name <env> --file requirements.txt`
+
+Note the environment is run on python 3.6
+
+### Map Merging in ROS
+
+When running the map merging in ROS place the [multi_robot_map_merging](./multi_robot_map_merging) in to catkin.
+
+Then to run use `roslaunch multi_robot_map_merging start_merge.launch`. This assumes that there are already maps being published in the network, if that wasn't done correclty please follow steps above.
+
+### Map Merging with exported images(.pgm)
+
+To process files offline from ROS, export the maps using [map_saver](http://wiki.ros.org/map_server) `rosrun map_server map_saver [--occ <threshold_occupied>] [--free <threshold_free>] [-f <mapname>] map:=/your/costmap/topic`. This will give both a .pgm and .yml file. The files can then be used in merging operations.
+
+The following project allows you to process the maps 2 or more maps being merged.
+
+Project is in [Export](./ExportMerging) in [main.py](./ExportMerging/main.py) the following statement deternines the files to be processed.
+
+```python
+if __name__ == "__main__":
+
+    # Number of maps to merge at a time for example 3 will simulate 3 maps being merged
+    nums = [2]
+
+    # Specify image folder
+    images_maze = {'name': 'Maze','images': glob.glob('inputmaps/maze/*.pgm') }
+    images = [images_maze]
+
+    for num in nums:
+        main(images, num)
+        
+    pass
+```
+
+example folder output is attached in [output_overlap](./ExportMerging/outputs_overlap)

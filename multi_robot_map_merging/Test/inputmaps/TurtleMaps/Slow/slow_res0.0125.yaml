@@ -1,0 +1,7 @@
+image: slow_res0.0125.pgm
+resolution: 0.012500
+origin: [-51.206245, -51.206245, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

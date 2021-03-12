@@ -1,0 +1,2 @@
+combination,match_ratio,numGoodMatches,originalResolution_div_transformedResolution,originalResolution_div_transformedResolution_minus_scaleRecovered,original_filename,original_resolution,percentage_overlap,scaleRecovered,success,thetaRecovered,transformed_filename,transformed_resolution
+"[0, 15]",0.5526315789473685,21,1.0,0.5415772512773188,maze\map_half_0.pgm,0.1,3.4954090150250416,0.4584227487226812,False,-1.4138220842612068,maze\test2.pgm,0.1
