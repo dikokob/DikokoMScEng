@@ -1,0 +1,68 @@
+%*****************************************************
+%	APPENDIX
+%*****************************************************
+\appendix
+%\renewcommand*{\thesection}{\alph{section}}
+\chapter{Appendix}
+\label{ch:appendix}
+%-----------------------------------------------------
+% Here are some useful LaTEX examples.
+% - Block diagrams 
+% -	Equations
+% - Figures
+% - Code
+% - Circuit diagrams
+% Please note that there often many ways of entering
+% this type of information. 
+%====================================================
+\section{Repository for the code}
+\label{sec:appendix.python_solution}
+
+Follow the read me file in the GitHub repository to replicate the work done in this thesis: \url{https://github.com/dikokob/DikokoMScEng}. The read me file also includes the process of setting up the turtle bot.
+
+\section{Raw data-sets}
+\label{sec:appendix.rawdata}
+
+Raw data-sets used in Chapters \ref{ch:experimental} and \ref{sec:map-merging} can be found in: \url{https://drive.google.com/drive/folders/1c\_2-T8FcrSmE0VDyHw20-jRLHKRuAvpE?usp=sharing}
+
+\section{Hector mapping parameters}
+\label{sec:appendix.hector-mapping}
+
+
+\begin{center}
+\begin{tabular}{ | m{2cm} | m{3cm} | m{10cm} |  } 
+\hline
+\textbf{Parameter} & \textbf{Value} & \textbf{Description}\\ 
+\hline
+\hline
+map\_resolution & Varies based on experiment & The map resolution m/cell. This is the length of a grid cell edge.\\ 
+\hline
+map\_size & 2048 & The size (number of cells per axis) of the map. The map is square and has (map\_size * map\_size) grid cells.\\ 
+\hline
+map\_start\_x & 0.5(default) & Location of the origin (0.0, 1.0) of the /map frame on the x axis relative to the grid map. 0.5 is in the middle.\\ 
+\hline
+map\_start\_y & 0.5(default) & Location of the origin (0.0, 1.0) of the /map frame on the y axis relative to the grid map. 0.5 is in the middle.\\ 
+\hline
+map\_update\_distance\_thresh  & 0.4 (default) & Threshold for performing map updates (m). The platform has to travel this far in meters or experience an angular change as described by the map\_update\_angle\_thresh parameter since the last update before a map update happens. \\ 
+\hline
+map\_update\_angle\_thresh & 0.9(default) & Threshold for performing map updates (rad). The platform has to experience an angular change as described by this parameter of travel as far as specified by the map\_update\_distance\_thresh parameter since the last update before a map update happens.  \\ 
+\hline
+map\_pub\_period & 2.0 & The map publish period (s).  \\ 
+\hline
+map\_multi\_res\_levels & 3(default) & The number of map multi-resolution grid levels.  \\ 
+\hline
+update\_factor\_free  & 0.4(default) &  The map update modifier for updates of free cells in the range (0.0, 1.0). A value of 0.5 means no change.\\ 
+\hline
+update\_factor\_occupied   & 0.9(default) &  The map update modifier for updates of occupied cells in the range (0.0, 1.0). A value of 0.5 means no change.\\ 
+\hline
+laser\_min\_dist & 0.1 & The minimum distance (m) for laser scan endpoints to be used by the system. Scan endpoints closer than this value are ignored.\\ 
+\hline
+laser\_max\_dist & 30(default) & The maximum distance (m) for laser scan endpoints to be used by the system. Scan endpoints farther away than this value are ignored. \\ 
+\hline
+laser\_z\_min\_value & -1.0(default) & The minimum height (m) relative to the laser scanner frame for laser scan endpoints to be used by the system. Scan endpoints lower than this value are ignored. \\ 
+\hline
+laser\_z\_max\_value & 1.0(default) & The maximum height (m) relative to the laser scanner frame for laser scan endpoints to be used by the system. Scan endpoints higher than this value are ignored.\\ 
+\hline
+\end{tabular}
+\end{center}
+

@@ -1,0 +1,40 @@
+% !TeX spellcheck = en_GB
+%****************************************************
+%	CHAPTER 5 - Conclusion
+%****************************************************
+\chapter{Conclusion}
+\label{ch:conclusion}
+%====================================================
+
+In the previous chapter, results obtained in simulation and real-world experiments were presented and discussed. This chapter will present the conclusions based on this discussion. Also, suggestions for future research are made.
+
+
+\section{Approach overview}
+
+This thesis presents, a distributed, multi-robot SLAM solution. The work's primary focus is a map merging algorithm that merges partial maps to form a global map. Partial maps are standard; for example, multiple robots exploring an environment or a single robot map exploring multiple mapping sessions starting from different locations. Therefore the map merging algorithm in this work aims to merge occupancy grid maps from multiple robots, multiple sessions and at varying resolutions. 
+
+In this thesis a distributed approach implemented on ROS was presented, where each robot: can produce a local map and share it with other robots, can retrieve local maps from other robots in its network, and can produce a global map from its local map, previously mapped sessions and local maps from other robots. 
+
+Each robot was equipped with Hector SLAM for mapping and localisation. Hector SLAM was compared to Graph SLAM, EKF SLAM and Fast SLAM, and was selected because it can operate without odometry data and deals better with loop closure.
+
+Experiments were conducted both in simulation and real-world environments. The real-world experiments were conducted on data produced for this work and a publicly available data-set. The results demonstrated that multi-robot, multi-session, multi-resolution map merging could be addressed using an image registration based algorithm. Features are extracted using SIFT from the maps then matched to find the relative transformation between maps. SIFT is orientation, translation and scale invariant, and when compared to alternative techniques, it was observed to be optimal for use on occupancy grid maps. 
+
+Results suggest that the match ratio between two maps is more significant than region overlap when matching two maps. It was observed that maps with an overlapping region of as low as 11.08\%, yield successful results.
+
+There are, however, limitations identified, such as low resolution partial maps affect the quality of the global map. Alignment and merging are performed from multiple map sources, and map quality is not assessed. We assume that maps presented to the merging algorithm have a reasonable level of quality. Therefore, low quality is not rejected, and the results show that mapping errors are propagated into the global map.
+
+
+
+\section{Future work}
+
+Although the proposed solution performs well in structured and low noise environment, there some issues left open and correspond to future guidelines that can be followed to improve the work. 
+
+Currently, the algorithm continuously computes the transformation between maps on each merge cycle. In the future, to reduce computation time, the previously computed transformation can be used instead of recalculating. Also, noted in the results, was the algorithm's inability to reject or correct maps which have SLAM errors. This issue can cause problems such as incorrect navigation and path planning. Therefore the algorithm must be extended to reject or correct faulty maps.
+
+This work has focused on two-dimensional maps. Although two-dimensional maps are still routinely used for navigation and path planning in three-dimensional SLAM algorithms, three-dimensional maps are becoming more common in robotics. In this case, a hybrid solution capable of working with two-dimensional and three-dimensional maps can be developed to extend the work in this thesis.
+
+
+
+%****************************************************
+% END
+%****************************************************
